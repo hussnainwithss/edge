@@ -74,7 +74,12 @@ import '../../ble/polar_pmd_link.dart' show PolarPmdLink;
 import '../../ble/session_link.dart' show SessionLink;
 import '../../ble/ultrahuman_link.dart' show UltrahumanLink;
 import '../../ble/band_status_l10n.dart' show localizedBandStatus;
-import '../../ble/ble_state.dart' show BandCondition, BandStatus, shouldOfferLockedLiveHr, kMaxConcurrentSecondaryLinks;
+import '../../ble/ble_state.dart'
+    show
+        BandCondition,
+        BandStatus,
+        kMaxConcurrentSecondaryLinks,
+        shouldOfferLockedLiveHr;
 import '../../compute/inputs/canonical.dart' show columnFor, flagOnOrPrimary;
 import '../../data/db.dart' show LocalDb;
 import '../../data/step_calibration.dart';
@@ -2083,6 +2088,9 @@ class _DeviceDetailState extends State<DeviceDetail> {
       liveHr: s.isBand ? app?.liveHr : null,
       lockedLiveHr: app == null
           ? LockedLiveHr.none
+          // optedIn: true tests only the three non-opt-in preconditions
+          // (locked + connected + 0x180D present); the ternary below then uses
+          // the real app.lockedLiveHrOptIn to pick offered-vs-active.
           : !shouldOfferLockedLiveHr(
                   firmware: app.device.firmware,
                   connected: app.isConnected,

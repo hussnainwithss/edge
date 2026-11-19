@@ -3816,7 +3816,7 @@
   "healthWearNotUpdatedSince": "nicht aktualisiert seit {time}",
   "dayStrainWornAsOf": "Getragen, Stand {time}",
   "bandStatusFirmwareLockedTitle": "Die Firmware des Bands hält wahrscheinlich seine Daten zurück",
-  "bandStatusFirmwareLockedReason": "Dieses Band läuft mit WHOOP-Firmware 50.43. Sie verbindet sich und antwortet der App, sendet aber keine gespeicherten Aufzeichnungen – also keinen Verlauf, keinen Schlaf und keine Erholung –, solange kein von WHOOP signiertes Mitgliedschafts-Token auf dem Band ist. OpenStrap kann dieses Token nicht ausstellen. Die Live-Herzfrequenz ist weiterhin verfügbar: Tippe unten, um sie anzuzeigen. Alles, was hier schon gespeichert ist, bleibt erhalten.",
+  "bandStatusFirmwareLockedReason": "Dieses Band läuft mit WHOOP-Firmware 50.43. Sie verbindet sich und antwortet der App, sendet aber keine gespeicherten Aufzeichnungen – also keinen Verlauf, keinen Schlaf und keine Erholung –, solange kein von WHOOP signiertes Mitgliedschafts-Token auf dem Band ist. OpenStrap kann dieses Token nicht ausstellen. Die Live-Herzfrequenz ist weiterhin verfügbar. Alles, was hier schon gespeichert ist, bleibt erhalten.",
   "lockedLiveHrAction": "Live-Herzfrequenz anzeigen",
   "lockedLiveHrNoSignal": "Kein Live-Signal – lass das Band angelegt und in Reichweite.",
   "bandStatusFirmwareLockedFix": "Liegt es an der Firmware, lässt sich das in der App nicht ändern, und der Hinweis verschwindet, sobald das Band wieder Aufzeichnungen sendet",

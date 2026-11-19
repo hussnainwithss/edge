@@ -3516,7 +3516,7 @@
   "healthWearNotUpdatedSince": "pas mis à jour depuis {time}",
   "dayStrainWornAsOf": "Porté, à {time}",
   "bandStatusFirmwareLockedTitle": "Le firmware du bracelet retient probablement ses données",
-  "bandStatusFirmwareLockedReason": "Ce bracelet utilise le firmware WHOOP 50.43, qui se connecte et répond à l’application, mais n’envoie aucun enregistrement stocké (ni historique, ni sommeil, ni récupération) tant qu’un jeton d’abonnement signé par WHOOP n’est pas présent sur le bracelet. OpenStrap ne peut pas émettre ce jeton. La fréquence cardiaque en direct reste disponible : touchez le bouton ci-dessous pour l’afficher. Tout ce qui est déjà enregistré ici est en sécurité.",
+  "bandStatusFirmwareLockedReason": "Ce bracelet utilise le firmware WHOOP 50.43, qui se connecte et répond à l’application, mais n’envoie aucun enregistrement stocké (ni historique, ni sommeil, ni récupération) tant qu’un jeton d’abonnement signé par WHOOP n’est pas présent sur le bracelet. OpenStrap ne peut pas émettre ce jeton. La fréquence cardiaque en direct reste disponible. Tout ce qui est déjà enregistré ici est en sécurité.",
   "lockedLiveHrAction": "Afficher la fréquence cardiaque en direct",
   "lockedLiveHrNoSignal": "Aucun signal en direct : gardez le bracelet porté et à portée.",
   "bandStatusFirmwareLockedFix": "Si c’est le firmware, l’application n’y peut rien et ce message disparaît dès que le bracelet renvoie des enregistrements",

@@ -91,6 +91,17 @@ void main() {
     expect(find.textContaining(' bpm'), findsNothing);
   });
 
+  testWidgets('opted in with a fresh beat renders the bpm value', (t) async {
+    final app = lockedApp()..retainLockedLiveHr();
+    app.device.liveHr = 72;
+    app.device.liveHrAt = DateTime.now().millisecondsSinceEpoch;
+    addTearDown(app.dispose);
+    await pumpCard(t, app);
+    expect(app.liveHr, 72);
+    expect(find.text('Show live heart rate'), findsNothing);
+    expect(find.text('72 bpm'), findsWidgets);
+  });
+
   testWidgets('leaving the page clears the opt-in', (t) async {
     final app = lockedApp();
     addTearDown(app.dispose);

@@ -400,7 +400,7 @@ BandStatus bandStatusFor({
           'recovery — until a WHOOP-signed membership token is on it. That is '
           'one possible reason no data is arriving. OpenStrap cannot issue '
           'that token. Live heart rate is still '
-          'available: tap below to show it. Everything already saved here is '
+          'available. Everything already saved here is '
           'safe.',
       fix: 'If it is the firmware, nothing in the app changes it, and this '
           'clears once the band sends recordings again',
