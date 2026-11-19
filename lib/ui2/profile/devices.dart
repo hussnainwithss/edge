@@ -74,7 +74,7 @@ import '../../ble/polar_pmd_link.dart' show PolarPmdLink;
 import '../../ble/session_link.dart' show SessionLink;
 import '../../ble/ultrahuman_link.dart' show UltrahumanLink;
 import '../../ble/band_status_l10n.dart' show localizedBandStatus;
-import '../../ble/ble_state.dart' show BandStatus, kMaxConcurrentSecondaryLinks;
+import '../../ble/ble_state.dart' show BandCondition, BandStatus, shouldOfferLockedLiveHr, kMaxConcurrentSecondaryLinks;
 import '../../compute/inputs/canonical.dart' show columnFor, flagOnOrPrimary;
 import '../../data/db.dart' show LocalDb;
 import '../../data/step_calibration.dart';
@@ -2007,7 +2007,13 @@ class _DeviceDetailState extends State<DeviceDetail> {
 
   @override
   void dispose() {
-    _liveHrOwner?.releaseLiveHrView();
+    try {
+      _liveHrOwner?.releaseLiveHrView();
+    } finally {
+      // The locked-band opt-in is per session: it must not outlive this page,
+      // even if the release above throws.
+      _liveHrOwner?.releaseLockedLiveHr();
+    }
     super.dispose();
   }
 
@@ -2075,6 +2081,18 @@ class _DeviceDetailState extends State<DeviceDetail> {
           ? () => goto(c, const FirmwareFlashScreen())
           : null,
       liveHr: s.isBand ? app?.liveHr : null,
+      lockedLiveHr: app == null
+          ? LockedLiveHr.none
+          : !shouldOfferLockedLiveHr(
+                  firmware: app.device.firmware,
+                  connected: app.isConnected,
+                  hasStandardHrService: app.lockedStandardHrAvailable,
+                  optedIn: true)
+              ? LockedLiveHr.none
+              : app.lockedLiveHrOptIn
+                  ? LockedLiveHr.active
+                  : LockedLiveHr.offered,
+      onLockedLiveHr: app?.retainLockedLiveHr,
       onRename: (app != null && app.isConnected)
           ? () => _renameBand(c, app, s.name)
           : null,
@@ -2474,6 +2492,9 @@ Future<void> _confirmForget(BuildContext c, AppState app, String name) async {
   if (c.mounted) backToRoot(c);
 }
 
+/// Where the firmware-locked card is in the opt-in live heart rate flow.
+enum LockedLiveHr { none, offered, active }
+
 class DeviceDetailView extends StatelessWidget {
   final HealthSource s;
   final VoidCallback? onFind, onForget, onSync;
@@ -2482,6 +2503,13 @@ class DeviceDetailView extends StatelessWidget {
   /// Passed IN rather than read from a provider here: this view is rendered in
   /// tests with no Provider above it, which is the point of it being a view.
   final int? liveHr;
+
+  /// Opt-in live heart rate on a firmware-locked band, decided by the caller
+  /// (`shouldOfferLockedLiveHr`). Only rendered on the firmwareLocked card.
+  final LockedLiveHr lockedLiveHr;
+
+  /// The opt-in tap. Per session; the owner clears it on dispose.
+  final VoidCallback? onLockedLiveHr;
 
   /// Rename the band. Null when there is nothing to rename (the phone) or no
   /// link to carry the write — the name lives on the strap, not on the phone,
@@ -2520,6 +2548,8 @@ class DeviceDetailView extends StatelessWidget {
       this.onSync,
       this.onRename,
       this.liveHr,
+      this.lockedLiveHr = LockedLiveHr.none,
+      this.onLockedLiveHr,
       this.status,
       this.wornOn,
       this.wornOnUnknown = false,
@@ -2580,6 +2610,37 @@ class DeviceDetailView extends StatelessWidget {
                 if (fault != null) ...[
                   StatusCard(fault.title, fault.reason,
                       fix: fault.fix ?? '', icon: LucideIcons.bluetoothOff),
+                  if (status?.condition == BandCondition.firmwareLocked &&
+                      lockedLiveHr == LockedLiveHr.offered)
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: TextButton(
+                        onPressed: onLockedLiveHr,
+                        child: Text(l?.lockedLiveHrAction ??
+                            'Show live heart rate'),
+                      ),
+                    ),
+                  if (status?.condition == BandCondition.firmwareLocked &&
+                      lockedLiveHr == LockedLiveHr.active)
+                    // A beat when there is one; otherwise a plain no-signal
+                    // line, which is neither an error nor a claim of success.
+                    Padding(
+                      padding: const EdgeInsets.only(top: S.x3),
+                      child: liveHr != null
+                          ? Surface(
+                              pad: const EdgeInsets.symmetric(
+                                  horizontal: S.x4),
+                              child: SetRow(LucideIcons.heartPulse, C.red,
+                                  l?.devicesHeartRate ?? 'Heart rate',
+                                  value: '$liveHr bpm',
+                                  sub: l?.devicesRightNow ?? 'Right now',
+                                  chevron: false),
+                            )
+                          : Text(
+                              l?.lockedLiveHrNoSignal ??
+                                  'No live signal — keep the band on and in range.',
+                              style: F.cap.copyWith(color: p.ink3)),
+                    ),
                   const SizedBox(height: S.x5),
                 ],
                 if (slotDeviceOf(s) case final d?) ...[

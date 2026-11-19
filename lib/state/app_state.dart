@@ -3784,6 +3784,42 @@ class AppState extends ChangeNotifier {
 
   void releaseLiveHrView() => _liveStreamController.releaseLiveHrView();
 
+  /// The user opted in, for this session only, to live heart rate from the
+  /// standard 0x180D service on a firmware-locked band. Deliberately NOT a
+  /// [retainLiveHrView]: that owns the framed live-HR stream, which is locked
+  /// on these bands and would fire locked opcodes. Never persisted. Pair with
+  /// [releaseLockedLiveHr] in `dispose`.
+  bool _lockedLiveHrOptIn = false;
+  bool get lockedLiveHrOptIn => _lockedLiveHrOptIn;
+
+  void retainLockedLiveHr() {
+    if (_lockedLiveHrOptIn) return;
+    _lockedLiveHrOptIn = true;
+    notifyListeners();
+  }
+
+  /// The flag clears at once; listeners are told on a microtask because this
+  /// runs from a widget's `dispose`, where the tree is locked and a provider
+  /// cannot be marked dirty.
+  void releaseLockedLiveHr() {
+    if (!_lockedLiveHrOptIn) return;
+    _lockedLiveHrOptIn = false;
+    scheduleMicrotask(() {
+      if (!_disposed) notifyListeners();
+    });
+  }
+
+  /// The connected band's discovered GATT includes the standard 0x180D
+  /// service. Set by the engine; false until it says so.
+  bool _lockedStandardHrAvailable = false;
+  bool get lockedStandardHrAvailable => _lockedStandardHrAvailable;
+
+  void setLockedStandardHrAvailable(bool v) {
+    if (_lockedStandardHrAvailable == v) return;
+    _lockedStandardHrAvailable = v;
+    notifyListeners();
+  }
+
   /// A bounded movement-reminder sampling window is open (IMU-only owner).
   ///
   /// There is NO scheduler yet, and enabling the movement-reminder preference
