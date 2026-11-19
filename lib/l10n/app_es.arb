@@ -3516,7 +3516,9 @@
   "healthWearNotUpdatedSince": "sin actualizar desde {time}",
   "dayStrainWornAsOf": "Llevada, a las {time}",
   "bandStatusFirmwareLockedTitle": "Probablemente el firmware de la banda está reteniendo sus datos",
-  "bandStatusFirmwareLockedReason": "Esta banda usa el firmware 50.43 de WHOOP, que puede conectarse y responder a la app sin enviar registros ni frecuencia cardíaca en vivo hasta que haya en ella un token de membresía firmado por WHOOP. Es una posible razón de que no lleguen datos. OpenStrap no puede emitir ese token. Todo lo que ya está guardado aquí está a salvo.",
+  "bandStatusFirmwareLockedReason": "Esta banda usa el firmware 50.43 de WHOOP, que se conecta y responde a la app, pero no envía registros almacenados (ni historial, ni sueño, ni recuperación) hasta que haya en ella un token de membresía firmado por WHOOP. OpenStrap no puede emitir ese token. La frecuencia cardíaca en vivo sigue disponible: toca abajo para mostrarla. Todo lo que ya está guardado aquí está a salvo.",
+  "lockedLiveHrAction": "Mostrar frecuencia cardíaca en vivo",
+  "lockedLiveHrNoSignal": "Sin señal en vivo: mantén la banda puesta y al alcance.",
   "bandStatusFirmwareLockedFix": "Si es el firmware, la app no puede cambiarlo y el aviso desaparece cuando la banda vuelva a enviar registros",
   "settingsSleepHmmRowTitle": "Clasificación del sueño experimental (HMM)",
   "@settingsSleepHmmRowTitle": {

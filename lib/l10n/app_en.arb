@@ -17247,9 +17247,17 @@
   "@bandStatusFirmwareLockedTitle": {
     "description": "BandStatus card title: band firmware 50.43 withholds all data until a WHOOP membership token is on it"
   },
-  "bandStatusFirmwareLockedReason": "This band runs WHOOP firmware 50.43, which can connect and answer the app but send no recordings or live heart rate until a WHOOP-signed membership token is on it. That is one possible reason no data is arriving. OpenStrap cannot issue that token. Everything already saved here is safe.",
+  "bandStatusFirmwareLockedReason": "This band runs WHOOP firmware 50.43, which connects and answers the app but sends no stored recordings — no history, sleep, or recovery — until a WHOOP-signed membership token is on it. OpenStrap cannot issue that token. Live heart rate is still available: tap below to show it. Everything already saved here is safe.",
   "@bandStatusFirmwareLockedReason": {
     "description": "BandStatus card body: band firmware 50.43 withholds all data until a WHOOP membership token is on it"
+  },
+  "lockedLiveHrAction": "Show live heart rate",
+  "@lockedLiveHrAction": {
+    "description": "Button on the locked-firmware band card: opt in to showing live heart rate from the band's standard heart-rate broadcast"
+  },
+  "lockedLiveHrNoSignal": "No live signal — keep the band on and in range.",
+  "@lockedLiveHrNoSignal": {
+    "description": "Empty state of the locked-band live heart-rate view when no heart-rate signal is arriving"
   },
   "bandStatusFirmwareLockedFix": "If it is the firmware, nothing in the app changes it, and this clears once the band sends recordings again",
   "@bandStatusFirmwareLockedFix": {

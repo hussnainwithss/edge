@@ -395,11 +395,13 @@ BandStatus bandStatusFor({
     return const BandStatus(
       BandCondition.firmwareLocked,
       'The band’s firmware is probably holding back its data',
-      'This band runs WHOOP firmware 50.43, which can connect and answer the '
-          'app but send no recordings or live heart rate until a '
-          'WHOOP-signed membership token is on it. That is one possible '
-          'reason no data is arriving. OpenStrap cannot issue that token. '
-          'Everything already saved here is safe.',
+      'This band runs WHOOP firmware 50.43, which connects and answers the '
+          'app but sends no stored recordings — no history, sleep, or '
+          'recovery — until a WHOOP-signed membership token is on it. That is '
+          'one possible reason no data is arriving. OpenStrap cannot issue '
+          'that token. Live heart rate is still '
+          'available: tap below to show it. Everything already saved here is '
+          'safe.',
       fix: 'If it is the firmware, nothing in the app changes it, and this '
           'clears once the band sends recordings again',
     );
