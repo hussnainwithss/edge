@@ -1076,4 +1076,30 @@ void main() {
       expect(isLinkAuthRefusal(c), isFalse, reason: '$c');
     }
   });
+
+  group('shouldOfferLockedLiveHr', () {
+    bool offer({
+      String? firmware = '50.43.1.0',
+      bool connected = true,
+      bool hasStandardHrService = true,
+      bool optedIn = true,
+    }) => shouldOfferLockedLiveHr(
+      firmware: firmware,
+      connected: connected,
+      hasStandardHrService: hasStandardHrService,
+      optedIn: optedIn,
+    );
+
+    test('locked + connected + 180D + opted in -> offered', () {
+      expect(offer(), isTrue);
+    });
+
+    test('each condition alone being false -> not offered', () {
+      expect(offer(firmware: '41.16.2.0'), isFalse);
+      expect(offer(firmware: null), isFalse);
+      expect(offer(connected: false), isFalse);
+      expect(offer(hasStandardHrService: false), isFalse);
+      expect(offer(optedIn: false), isFalse);
+    });
+  });
 }

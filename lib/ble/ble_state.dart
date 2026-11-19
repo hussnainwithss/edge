@@ -285,6 +285,19 @@ bool isLinkAuthRefusal(int? code) =>
 bool isDataLockedFirmware(String? firmware) =>
     firmware != null && firmware.startsWith('50.43.');
 
+/// Whether to offer opt-in live heart rate from the standard 0x180D service on
+/// a firmware-locked band. Pure; every condition must hold.
+bool shouldOfferLockedLiveHr({
+  required String? firmware,
+  required bool connected,
+  required bool hasStandardHrService,
+  required bool optedIn,
+}) =>
+    isDataLockedFirmware(firmware) &&
+    connected &&
+    hasStandardHrService &&
+    optedIn;
+
 /// Fold the phone-level blocker and the band's own diagnostic flags into one
 /// state. Pure; [connection] is `DeviceState.connection`.
 ///
