@@ -1122,6 +1122,28 @@ class BleEngine {
 
   final DeviceState state = DeviceState();
 
+  // ── locked-band standard 0x180D live HR ─────────────────────────────────────
+  /// The user's intent to see live HR on a firmware-locked band, from
+  /// AppState's per-session opt-in (never persisted). Drives whether the 2A37
+  /// subscription is reconciled on; see [setLockedLiveHrWanted].
+  bool _lockedLiveHrWanted = false;
+
+  /// The SIG Heart Rate Measurement (0x2A37) characteristic discovered on the
+  /// connected band's 0x180D service, or null when the band has none. Pinned in
+  /// [_discoverBand], cleared on teardown.
+  BluetoothCharacteristic? _standardHrChar;
+
+  /// The live 2A37 notification subscription, or null when not subscribed. Kept
+  /// OUT of `_Session.subs` on purpose: its lifecycle is the opt-in reconcile,
+  /// not the session's, so [_reconcileLockedLiveHr] owns cancelling it.
+  StreamSubscription<List<int>>? _standardHrSub;
+
+  /// Guards [_reconcileLockedLiveHr] against re-entrancy across its `await`s
+  /// (toggle + READY can both fire it); a call made while busy re-runs once the
+  /// in-flight one settles, mirroring `_liveRestale` on the framed path.
+  bool _standardHrReconciling = false;
+  bool _standardHrReconcilePending = false;
+
   /// The device family every row this link produces is stamped with — `'gen4'`
   /// or `'gen5'`, pinned once at service discovery. NULL until a link has
   /// actually identified itself, and NULL is not gen4: it means we do not know
@@ -3274,6 +3296,10 @@ class BleEngine {
         return false;
       }
       _setPhase(BleConnState.listening);
+      // Locked bands: (re-)establish the standard 0x180D live-HR subscription if
+      // the user is opted in. This is also the re-subscribe point after a link
+      // bounce — a fresh session re-discovers the 2A37 char and re-runs the gate.
+      unawaited(_reconcileLockedLiveHr());
       // The charging-only battery-pack lookup launches strictly AFTER
       // READY, asynchronously; it never blocks or gates anything.
       _maybeStartBatteryPackFollowUp(session);
@@ -4005,6 +4031,28 @@ class BleEngine {
     final services =
         await device.discoverServices().timeout(_serviceDiscoveryTimeout);
     _logGattTable(services);
+    // The SIG Heart Rate Service (0x180D) is a SEPARATE service from the framed
+    // WHOOP one, in the same discovered list. On a firmware-locked band it is
+    // the only live-HR path (the framed `realtime_hr` stream is locked), so note
+    // its presence and pin its 2A37 Heart Rate Measurement characteristic for
+    // [setLockedLiveHrWanted] to subscribe. `str128`, not `str`: a SIG-assigned
+    // service comes back as the full `0000180d...`/`00002a37...` form — see the
+    // framed-service match below for why the short form would never prefix-match.
+    BluetoothCharacteristic? standardHr;
+    for (final s in services) {
+      if (!s.uuid.str128.startsWith('0000180d')) continue;
+      for (final c in s.characteristics) {
+        if (c.uuid.str128.startsWith('00002a37')) {
+          standardHr = c;
+          break;
+        }
+      }
+      if (standardHr != null) break;
+    }
+    _standardHrChar = standardHr;
+    state.standardHrPresent =
+        services.any((s) => s.uuid.str128.startsWith('0000180d'));
+    onState(state);
     // Pin the band from whichever registered service the peripheral exposes.
     // This drives the frame header/CRC, command envelope, ACK, and record
     // decode for the session.
@@ -4652,6 +4700,105 @@ class BleEngine {
       c.onValueReceived.listen((chunk) => _onChunk(session, role, chunk)),
     );
   }
+
+  /// Record the user's intent to see live HR on a firmware-locked band, then
+  /// reconcile the standard 0x180D (2A37) subscription against it. Never
+  /// persisted — AppState clears it when the page goes away. The subscription
+  /// itself is gated by [shouldOfferLockedLiveHr] inside [_reconcileLockedLiveHr]
+  /// and a live session with a discovered 2A37 characteristic, so turning this
+  /// on without a locked, connected band does nothing.
+  void setLockedLiveHrWanted(bool wanted) {
+    if (_lockedLiveHrWanted == wanted) return;
+    _lockedLiveHrWanted = wanted;
+    unawaited(_reconcileLockedLiveHr());
+  }
+
+  /// Converge the 2A37 subscription on the gate. Idempotent: it subscribes only
+  /// when the gate holds AND a 2A37 characteristic exists on the current session
+  /// AND nothing is subscribed yet, and cancels otherwise. Re-entrancy during an
+  /// `await` is coalesced into one trailing re-run (`_standardHrReconcilePending`).
+  Future<void> _reconcileLockedLiveHr() async {
+    if (_standardHrReconciling) {
+      _standardHrReconcilePending = true;
+      return;
+    }
+    _standardHrReconciling = true;
+    try {
+      final session = _session;
+      final char = _standardHrChar;
+      final connected =
+          session != null && session.connected && !session.closing;
+      final want = shouldOfferLockedLiveHr(
+            firmware: state.firmware,
+            connected: connected,
+            hasStandardHrService: state.standardHrPresent,
+            optedIn: _lockedLiveHrWanted,
+          ) &&
+          char != null;
+      if (want) {
+        if (_standardHrSub != null) return; // already subscribed — no-op
+        try {
+          await char.setNotifyValue(true).timeout(_notifySetupTimeout);
+          _standardHrSub = char.onValueReceived.listen(_onStandardHrValue);
+          _log('[GATT] subscribed locked live HR 2A37 ${char.uuid.str128} '
+              'isNotifying=${char.isNotifying}');
+        } catch (e) {
+          _log('locked live HR 2A37 subscribe failed: $e');
+          await _standardHrSub?.cancel();
+          _standardHrSub = null;
+        }
+      } else {
+        await _cancelStandardHrSub();
+      }
+    } finally {
+      _standardHrReconciling = false;
+      if (_standardHrReconcilePending) {
+        _standardHrReconcilePending = false;
+        unawaited(_reconcileLockedLiveHr());
+      }
+    }
+  }
+
+  /// Cancel the 2A37 subscription and best-effort unsubscribe the notify. Safe
+  /// to call when nothing is subscribed.
+  Future<void> _cancelStandardHrSub() async {
+    final sub = _standardHrSub;
+    if (sub == null) return;
+    _standardHrSub = null;
+    await sub.cancel();
+    final char = _standardHrChar;
+    if (char != null) {
+      try {
+        await char.setNotifyValue(false).timeout(_notifySetupTimeout);
+      } catch (_) {
+        // Best-effort: on a dropped link the notify write fails, which is fine
+        // — the subscription is already gone and the char dies with the link.
+      }
+    }
+  }
+
+  /// One 0x2A37 Heart Rate Measurement notification → the single live-HR state.
+  ///
+  /// Mirrors the framed `realtime_hr` writer: on a usable beat it stamps
+  /// `state.liveHr`/`liveHrAt` and notifies; otherwise it does nothing and lets
+  /// the last value go stale (the view self-expires to the no-signal state).
+  /// The wire decode is the protocol parser's — edge does none itself — and it
+  /// already drops 0-bpm/non-physiological and malformed notifications (returns
+  /// null). R-R is ignored on this path.
+  void _onStandardHrValue(List<int> bytes) {
+    final s = parseHeartRateMeasurement(bytes);
+    if (s == null) return;
+    if (s.hr > 0) {
+      state.liveHr = s.hr;
+      state.liveHrAt = DateTime.now().millisecondsSinceEpoch;
+      onState(state);
+    }
+  }
+
+  /// Test seam onto [_onStandardHrValue] — the radio otherwise sits between a
+  /// 2A37 notification and the state write.
+  @visibleForTesting
+  void debugOnStandardHrValue(List<int> bytes) => _onStandardHrValue(bytes);
 
   /// One notification's bytes on [role]: reassemble, then route each frame.
   void _onChunk(_Session session, String role, List<int> chunk) {
@@ -9368,6 +9515,14 @@ class BleEngine {
     for (final sub in session.subs) {
       unawaited(sub.cancel());
     }
+    // The locked-band 2A37 subscription is NOT in `session.subs` (its lifecycle
+    // is the opt-in reconcile, not the session's), so cancel it here with the
+    // rest of the ingress. The char dies with the link; a fresh session
+    // re-discovers it and the READY reconcile re-subscribes when still wanted.
+    unawaited(_standardHrSub?.cancel());
+    _standardHrSub = null;
+    _standardHrChar = null;
+    state.standardHrPresent = false;
     // Live arming is per-connection: applied clears now, the owners' intent
     // survives and is re-applied on the next link's first reconcile. A fresh
     // link's high-rate bundle is unknown again (gen4's R10/R11 OFF persists on

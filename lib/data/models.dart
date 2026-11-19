@@ -388,6 +388,14 @@ class DeviceState {
   bool? wristOn;
   int? liveHr; // latest live HR from the foreground stream
   int? liveHrAt; // epoch ms
+
+  /// The connected band's discovered GATT exposes the SIG Heart Rate Service
+  /// (0x180D). On a firmware-locked band this is the ONLY live-HR path (the
+  /// framed `realtime_hr` stream is locked), so the engine sets it at service
+  /// discovery and clears it on teardown; AppState mirrors it into
+  /// `lockedStandardHrAvailable`. NOT the same as [standardHrFallback], which
+  /// means framed-HR-without-IMU.
+  bool standardHrPresent = false;
   int?
   alarmEpoch; // current strap alarm (unix sec) from GET_ALARM_TIME, if read
   String?

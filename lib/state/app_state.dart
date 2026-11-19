@@ -3795,6 +3795,7 @@ class AppState extends ChangeNotifier {
   void retainLockedLiveHr() {
     if (_lockedLiveHrOptIn) return;
     _lockedLiveHrOptIn = true;
+    engine.setLockedLiveHrWanted(true);
     notifyListeners();
   }
 
@@ -3804,6 +3805,7 @@ class AppState extends ChangeNotifier {
   void releaseLockedLiveHr() {
     if (!_lockedLiveHrOptIn) return;
     _lockedLiveHrOptIn = false;
+    engine.setLockedLiveHrWanted(false);
     scheduleMicrotask(() {
       if (!_disposed) notifyListeners();
     });
@@ -4838,6 +4840,9 @@ class AppState extends ChangeNotifier {
   void _onEngineState(String deviceId, DeviceState s) {
     if (_resetting || _replacingBand) return; // candidate is not the primary yet
     _appendLiveHr(deviceId, s.liveHr, s.liveHrAt);
+    // Mirror the engine's 0x180D discovery into the locked-band opt-in gate.
+    // Change-gated inside the setter, so this is free on the ~1 Hz ticks.
+    setLockedStandardHrAvailable(s.standardHrPresent);
     // Bank the name the moment the band says it, so it survives the
     // disconnect. Written through `cleanDeviceLabel` for the same reason the
     // BLE side reads through it: a garbled response must never become the
