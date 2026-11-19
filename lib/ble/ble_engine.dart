@@ -4739,7 +4739,19 @@ class BleEngine {
         if (_standardHrSub != null) return; // already subscribed — no-op
         try {
           await char.setNotifyValue(true).timeout(_notifySetupTimeout);
-          _standardHrSub = char.onValueReceived.listen(_onStandardHrValue);
+          // Capture the live session so a beat buffered on a since-dead link
+          // can't stamp liveHr — same staleness guard as [_onChunk]. The guard
+          // lives here (not in [_onStandardHrValue]) to keep that method's
+          // signature + behaviour intact for the seam test.
+          final hrSession = session!;
+          _standardHrSub = char.onValueReceived.listen((bytes) {
+            if (_session != hrSession ||
+                !hrSession.connected ||
+                hrSession.closing) {
+              return;
+            }
+            _onStandardHrValue(bytes);
+          });
           _log('[GATT] subscribed locked live HR 2A37 ${char.uuid.str128} '
               'isNotifying=${char.isNotifying}');
         } catch (e) {
@@ -9523,6 +9535,10 @@ class BleEngine {
     _standardHrSub = null;
     _standardHrChar = null;
     state.standardHrPresent = false;
+    // Push the cleared presence so AppState's mirror (lockedStandardHrAvailable)
+    // can't stay true after the link is gone — _onLinkDown's idle push fires
+    // before this reset, so nothing else carries the false out.
+    onState(state);
     // Live arming is per-connection: applied clears now, the owners' intent
     // survives and is re-applied on the next link's first reconcile. A fresh
     // link's high-rate bundle is unknown again (gen4's R10/R11 OFF persists on
